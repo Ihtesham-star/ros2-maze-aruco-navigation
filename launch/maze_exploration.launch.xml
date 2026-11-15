@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+  <let name="pkg_share" value="$(find-pkg-share final_project)"/>
+  <let name="xacro_file" value="$(var pkg_share)/urdf/turtlebot3_burger.xacro"/>
+  <let name="robot_description" value="$(command 'xacro $(var xacro_file)')"/>
+
+  <arg name="use_sim_time" default="true"/>
+
+  <!-- Robot State Publisher -->
+  <node pkg="robot_state_publisher" exec="robot_state_publisher" output="screen">
+    <param name="robot_description" type="str" value="$(var robot_description)"/>
+    <param name="use_sim_time" value="$(var use_sim_time)"/>
+  </node>
+
+  <!-- Gazebo -->
+  <set_env name="GAZEBO_MODEL_PATH" value="$(var pkg_share)/models:$(env GAZEBO_MODEL_PATH)"/>
+  <set_env name="GAZEBO_RESOURCE_PATH" value="$(var pkg_share):$(env GAZEBO_RESOURCE_PATH)"/>
+  <executable cmd="gzserver --verbose $(var pkg_share)/worlds/maze_aruco_final.world -s libgazebo_ros_init.so -s libgazebo_ros_factory.so" output="screen"/>
+  <executable cmd="gzclient" output="screen"/>
+
+  <!-- Spawn Robot -->
+  <node pkg="gazebo_ros" exec="spawn_entity.py" output="screen"
+        args="-topic robot_description -entity turtlebot3_burger -x 0.25 -y 0.5 -z 0.0 -Y 0.0"
+        launch-prefix="bash -c 'sleep 5; $0 $@'">
+    <param name="use_sim_time" value="$(var use_sim_time)"/>
+  </node>
+
+  <!-- SLAM Toolbox -->
+  <node pkg="slam_toolbox" exec="async_slam_toolbox_node" name="slam_toolbox" output="screen"
+        launch-prefix="bash -c 'sleep 8; $0 $@'">
+    <param name="use_sim_time" value="$(var use_sim_time)"/>
+    <param from="$(var pkg_share)/config/mapper_params_online_async.yaml"/>
+  </node>
+
+  <!-- Explorer Node -->
+  <node pkg="final_project" exec="maze_explorer_node" name="maze_explorer_node" output="screen"
+        launch-prefix="bash -c 'sleep 10; $0 $@'">
+    <param name="use_sim_time" value="$(var use_sim_time)"/>
+  </node>
+
+  <!-- Map Saver Node -->
+  <node pkg="final_project" exec="map_saver_node" name="map_saver_node" output="screen"
+        launch-prefix="bash -c 'sleep 10; $0 $@'">
+    <param name="use_sim_time" value="$(var use_sim_time)"/>
+  </node>
+
+</launch>

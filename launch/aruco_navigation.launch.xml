@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+  <let name="pkg_share" value="$(find-pkg-share final_project)"/>
+  <let name="xacro_file" value="$(var pkg_share)/urdf/turtlebot3_burger.xacro"/>
+  <let name="robot_description" value="$(command 'xacro $(var xacro_file)')"/>
+
+  <arg name="use_sim_time" default="true"/>
+  <arg name="marker_id" default="0"/>
+
+  <!-- Robot State Publisher -->
+  <node pkg="robot_state_publisher" exec="robot_state_publisher" output="screen">
+    <param name="robot_description" type="str" value="$(var robot_description)"/>
+    <param name="use_sim_time" value="$(var use_sim_time)"/>
+  </node>
+
+  <!-- Gazebo -->
+  <set_env name="GAZEBO_MODEL_PATH" value="$(var pkg_share)/models:$(env GAZEBO_MODEL_PATH)"/>
+  <set_env name="GAZEBO_RESOURCE_PATH" value="$(var pkg_share):$(env GAZEBO_RESOURCE_PATH)"/>
+  <executable cmd="gzserver --verbose $(var pkg_share)/worlds/maze_aruco_final.world -s libgazebo_ros_init.so -s libgazebo_ros_factory.so" output="screen"/>
+  <executable cmd="gzclient" output="screen"/>
+
+  <!-- Spawn Robot -->
+  <node pkg="gazebo_ros" exec="spawn_entity.py" output="screen"
+        args="-topic robot_description -entity turtlebot3_burger -x 0.25 -y 0.5 -z 0.0 -Y 0.0"
+        launch-prefix="bash -c 'sleep 5; $0 $@'">
+    <param name="use_sim_time" value="$(var use_sim_time)"/>
+  </node>
+
+  <!-- Nav2 -->
+  <include file="$(find-pkg-share nav2_bringup)/launch/bringup_launch.py">
+    <arg name="map" value="$(var pkg_share)/maps/explored_maze.yaml"/>
+    <arg name="use_sim_time" value="$(var use_sim_time)"/>
+    <arg name="params_file" value="$(var pkg_share)/config/nav2_params.yaml"/>
+  </include>
+
+  <!-- ArUco Goal Node -->
+  <node pkg="final_project" exec="aruco_goal_node" name="aruco_goal_node" output="screen"
+        launch-prefix="bash -c 'sleep 15; $0 $@'">
+    <param name="marker_id" value="$(var marker_id)"/>
+    <param name="use_sim_time" value="$(var use_sim_time)"/>
+  </node>
+
+</launch>
